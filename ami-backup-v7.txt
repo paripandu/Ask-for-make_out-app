@@ -1,0 +1,57 @@
+import boto3
+from datetime import datetime
+
+# Set your AWS region, access key, and secret key
+aws_region = 'us-east-1'  # Change this to your desired region
+aws_access_key = 'AKIAVFYPMCWHRWXWNTLV'
+aws_secret_key = 'Oar4+mswYENPsRzTHvVLlPEAG+FrRmB7u0UT1Ay2'
+
+def get_instance_name(instance_id):
+    ec2 = boto3.resource('ec2', region_name=aws_region, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
+    instance = ec2.Instance(instance_id)
+
+    for tag in instance.tags:
+        if tag['Key'] == 'Name':
+            return tag['Value']
+
+def create_ami(instance_id):
+    ec2 = boto3.client('ec2', region_name=aws_region, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key)
+    instance_name = get_instance_name(instance_id)
+    date_format = datetime.now().strftime("%d-%m-%Y")
+    ami_name = f"{instance_name}-{date_format}"
+
+    print(f"Creating AMI for instance {instance_id} ({instance_name})...")
+
+    response = ec2.create_image(
+        InstanceId=instance_id,
+        Name=ami_name,
+        Description=f"AMI Backup for instance {instance_id} ({instance_name})",
+        NoReboot=True
+    )
+
+    ami_id = response['ImageId']
+    print(f"AMI {ami_id} created successfully!")
+
+    return instance_name, instance_id
+
+def main():
+    print("Enter instance IDs (one per line) and type 'end' when finished:")
+
+    instance_ids = []
+    while True:
+        instance_id = input().strip()
+        if instance_id.lower() == 'end':
+            break
+        instance_ids.append(instance_id)
+
+    ami_count = 0
+
+    for instance_id in instance_ids:
+        instance_name, instance_id = create_ami(instance_id)
+        ami_count += 1
+        print(f"{instance_name} ({instance_id}) AMI has been successfully created.")
+
+    print(f"Total {ami_count} AMIs created.")
+
+if __name__ == "__main__":
+    main()
